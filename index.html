@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#06070a">
+  <meta name="referrer" content="no-referrer">
+  <title>Invention Notebook</title>
+  <meta name="description" content="A locked, encrypted notebook for your inventions that gives your own lessons back to you when you're stuck.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="is-locked">
+
+  <!-- ===================== LOCK SCREEN ===================== -->
+  <div id="lock" class="lock" aria-live="polite">
+    <div class="sky" aria-hidden="true">
+      <div class="clouds c1"></div>
+      <div class="clouds c2"></div>
+      <div class="beam"></div>
+      <div class="signal">
+        <svg viewBox="0 0 100 100"><path d="M43 4h14l2 11a36 36 0 0 1 9 4l9-7 10 10-7 9a36 36 0 0 1 4 9l11 2v14l-11 2a36 36 0 0 1-4 9l7 9-10 10-9-7a36 36 0 0 1-9 4l-2 11H43l-2-11a36 36 0 0 1-9-4l-9 7-10-10 7-9a36 36 0 0 1-4-9L5 57V43l11-2a36 36 0 0 1 4-9l-7-9 10-10 9 7a36 36 0 0 1 9-4zM50 32a18 18 0 1 0 0 36 18 18 0 0 0 0-36z"/></svg>
+      </div>
+      <div class="rain"></div>
+      <svg class="skyline" viewBox="0 0 1200 220" preserveAspectRatio="none">
+        <path d="M0 220V150h40v-30h25v30h20V90h30v-20h10v20h25v130h15V120h45V60l20-25 20 25v160h20V140h30v-40h40v120h20V80h15V50h10v30h20v140h25V130h35v-20h20v110h20V70h50v150h15V110h25V95h30v125h20V40l15-20 15 20v180h25V130h40v90h20V100h35v-30h15v30h20v120h25V150h30v-25h20v95h25V90h40v130h20V120h30v100h25V160h35v60z"/>
+      </svg>
+    </div>
+
+    <div class="lock-panel" id="lockPanel">
+      <div class="lock-emblem" aria-hidden="true">
+        <svg viewBox="0 0 100 100"><use href="#gear"/></svg>
+      </div>
+      <h1 class="lock-title">Invention Notebook</h1>
+      <div class="lock-sub" id="lockSub">Secure vault</div>
+      <div class="boot" id="boot"></div>
+
+      <form id="lockForm" class="lock-form hidden" autocomplete="off">
+        <input type="text" name="username" autocomplete="username" value="inventor" hidden>
+        <label class="field">
+          <span id="passLabel">Passphrase</span>
+          <input type="password" id="passInput" autocomplete="current-password" required minlength="1">
+        </label>
+        <label class="field hidden" id="confirmWrap">
+          <span>Confirm passphrase</span>
+          <input type="password" id="passConfirm" autocomplete="new-password">
+        </label>
+        <div class="strength hidden" id="strength"><div class="strength-bar"><i></i></div><span></span></div>
+        <p class="lock-note hidden" id="setupNote">Your notes are encrypted with this passphrase. <strong>There is no reset</strong> — if you forget it, the notes can’t be recovered.</p>
+        <button class="btn primary wide" id="unlockBtn" type="submit">Unlock</button>
+        <div class="lock-msg" id="lockMsg" role="alert"></div>
+      </form>
+    </div>
+  </div>
+
+  <svg class="sprite" width="0" height="0" aria-hidden="true">
+    <symbol id="gear" viewBox="0 0 100 100"><path d="M43 4h14l2 11a36 36 0 0 1 9 4l9-7 10 10-7 9a36 36 0 0 1 4 9l11 2v14l-11 2a36 36 0 0 1-4 9l7 9-10 10-9-7a36 36 0 0 1-9 4l-2 11H43l-2-11a36 36 0 0 1-9-4l-9 7-10-10 7-9a36 36 0 0 1-4-9L5 57V43l11-2a36 36 0 0 1 4-9l-7-9 10-10 9 7a36 36 0 0 1 9-4zM50 32a18 18 0 1 0 0 36 18 18 0 0 0 0-36z"/></symbol>
+  </svg>
+
+  <!-- ===================== APP ===================== -->
+  <div id="app" class="app" inert>
+    <header class="topbar">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><use href="#gear"/></svg>
+        <span>Invention<b>Notebook</b></span>
+      </div>
+      <nav class="tabs" role="tablist" id="tabs">
+        <button class="tab active" data-view="notebook" role="tab">Notebook</button>
+        <button class="tab" data-view="stuck" role="tab">I'm stuck</button>
+        <button class="tab" data-view="projects" role="tab">Projects</button>
+        <button class="tab" data-view="cameras" role="tab">Cameras <span class="live-pill hidden" id="livePill">0</span></button>
+        <span class="tab-ink" id="tabInk"></span>
+      </nav>
+      <div class="top-actions">
+        <button class="btn primary" id="newNoteBtn" aria-label="New note">+<span class="btn-label"> New note</span></button>
+        <button class="icon-btn" id="settingsBtn" title="Security & backup" aria-label="Security and backup">⚙</button>
+        <button class="icon-btn lock-btn" id="lockBtn" title="Lock now (Alt+L)" aria-label="Lock">🔒</button>
+      </div>
+    </header>
+
+    <main id="views">
+      <!-- NOTEBOOK -->
+      <section id="view-notebook" class="view active">
+        <div id="exampleBanner" class="banner hidden">
+          <span>These are example notes to show how it works.</span>
+          <button class="btn small" id="clearExamplesBtn">Remove examples</button>
+        </div>
+        <div id="rememberCard" class="remember hidden"></div>
+        <div class="filters">
+          <input type="search" id="searchBox" placeholder="Search your notes…  ( / )" aria-label="Search notes">
+          <select id="projectFilter" aria-label="Filter by project"></select>
+          <div class="chips" id="kindFilter"></div>
+        </div>
+        <div id="noteList" class="note-list"></div>
+      </section>
+
+      <!-- I'M STUCK -->
+      <section id="view-stuck" class="view">
+        <div class="stuck-hero">
+          <h1>Stuck, or starting something new?</h1>
+          <p>Describe what you're building or what isn't working. Your notebook will dig up past notes, fixes and lessons that might apply.</p>
+          <textarea id="stuckInput" rows="4" placeholder="e.g. The servo arm keeps slipping on the 3D printed gear and the battery gets hot"></textarea>
+          <div class="row">
+            <button class="btn primary" id="stuckBtn">Find help in my notes</button>
+            <button class="btn" id="logProblemBtn">Log this as a problem</button>
+            <span class="muted small">Ctrl + Enter</span>
+          </div>
+        </div>
+        <div id="stuckResults"></div>
+      </section>
+
+      <!-- PROJECTS -->
+      <section id="view-projects" class="view">
+        <h1 class="view-title">Projects</h1>
+        <div id="projectGrid" class="project-grid"></div>
+      </section>
+
+      <!-- CAMERAS -->
+      <section id="view-cameras" class="view">
+        <div class="cam-head">
+          <h1 class="view-title">Cameras</h1>
+          <div class="row">
+            <button class="btn primary" id="startCamsBtn">Turn on this device’s cameras</button>
+            <button class="btn" id="addCamBtn">+ Add network camera</button>
+          </div>
+        </div>
+        <div class="cam-layout">
+          <div>
+            <div id="camGrid" class="cam-grid"></div>
+            <div id="camEmpty" class="empty">
+              <h2>No cameras on</h2>
+              <p>Turn on your webcam or phone camera to watch your build, or add a network camera by its stream URL.
+                Snapshots go straight into a note. Cameras switch off automatically when the notebook locks.</p>
+            </div>
+          </div>
+          <aside class="cam-side">
+            <h3>Motion log</h3>
+            <div id="camEvents"></div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>🔐 Encrypted on this device · auto-locks when idle</span>
+    </footer>
+  </div>
+
+  <!-- NOTE EDITOR -->
+  <dialog id="editor" class="modal">
+    <form method="dialog" id="editorForm" class="editor">
+      <div class="editor-main">
+        <div class="editor-head">
+          <h2 id="editorTitle">New note</h2>
+          <button type="button" class="icon-btn" data-close aria-label="Close">✕</button>
+        </div>
+        <label>Title
+          <input name="title" required placeholder="What's this note about?" autocomplete="off">
+        </label>
+        <div class="grid2">
+          <label>Type
+            <select name="kind">
+              <option value="note">📝 Note</option>
+              <option value="lesson">💡 Lesson learned</option>
+              <option value="tip">🔧 Tip / trick</option>
+              <option value="problem">⚠️ Problem</option>
+              <option value="fix">✅ Fix that worked</option>
+              <option value="idea">✨ Idea</option>
+            </select>
+          </label>
+          <label>Project
+            <input name="project" list="projectOptions" placeholder="e.g. Robot arm" autocomplete="off">
+            <datalist id="projectOptions"></datalist>
+          </label>
+        </div>
+        <label>Note
+          <textarea name="body" rows="7" placeholder="Write down what you did, measured, noticed or figured out…"></textarea>
+        </label>
+        <label id="solutionField" class="hidden">What fixed it? <span class="muted">(fill in once you solve it — this is what future-you will want)</span>
+          <textarea name="solution" rows="3" placeholder="Leave empty while it's still unsolved"></textarea>
+        </label>
+        <div class="grid2">
+          <label>Tags <span class="muted">(comma separated)</span>
+            <input name="tags" placeholder="servo, gears, power" autocomplete="off">
+          </label>
+          <label class="check">
+            <input type="checkbox" name="pinned"> 📌 Pin as important
+          </label>
+        </div>
+        <div class="photos" id="photoStrip"></div>
+        <div class="editor-actions">
+          <label class="btn small" for="photoFile">📷 Add photo</label>
+          <input type="file" id="photoFile" accept="image/*" capture="environment" multiple hidden>
+          <button type="button" class="btn danger small" id="deleteNoteBtn">Delete</button>
+          <span class="spacer"></span>
+          <button type="button" class="btn" data-close>Cancel</button>
+          <button type="submit" class="btn primary">Save note</button>
+        </div>
+      </div>
+      <aside class="editor-side">
+        <h3>From your past notes</h3>
+        <p class="muted small">Updates as you type.</p>
+        <div id="relatedList"></div>
+      </aside>
+    </form>
+  </dialog>
+
+  <!-- NETWORK CAMERA -->
+  <dialog id="camDialog" class="modal small-modal">
+    <form method="dialog" id="camForm" class="stack">
+      <div class="editor-head"><h2>Add network camera</h2><button type="button" class="icon-btn" data-close aria-label="Close">✕</button></div>
+      <label>Name <input name="name" required placeholder="Workshop bench" autocomplete="off"></label>
+      <label>Stream or snapshot URL <input name="url" required type="url" placeholder="https://192.168.1.20:8080/video" autocomplete="off"></label>
+      <label>Refresh every (seconds) <span class="muted">— only for still-image snapshot URLs, 0 for live streams</span>
+        <input name="refresh" type="number" min="0" max="3600" value="0">
+      </label>
+      <p class="muted small">Works with MJPEG streams, snapshot (.jpg) URLs and .mp4/.webm video URLs — most IP cameras and phone “IP Webcam” apps offer one.
+        Browsers can’t play RTSP directly. If this site is on https, the camera URL must be https too.</p>
+      <div class="editor-actions"><span class="spacer"></span><button type="button" class="btn" data-close>Cancel</button><button class="btn primary" type="submit">Add camera</button></div>
+    </form>
+  </dialog>
+
+  <!-- SETTINGS -->
+  <dialog id="settingsDialog" class="modal small-modal">
+    <div class="stack">
+      <div class="editor-head"><h2>Security &amp; backup</h2><button type="button" class="icon-btn" data-close aria-label="Close">✕</button></div>
+
+      <section class="setting">
+        <h3>Auto-lock</h3>
+        <label>Lock after being idle for
+          <select id="autoLockSelect">
+            <option value="1">1 minute</option>
+            <option value="5">5 minutes</option>
+            <option value="15">15 minutes</option>
+            <option value="30">30 minutes</option>
+            <option value="60">1 hour</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="setting">
+        <h3>Change passphrase</h3>
+        <form id="changePassForm" class="stack">
+          <input type="password" id="oldPass" placeholder="Current passphrase" autocomplete="current-password" required>
+          <input type="password" id="newPass" placeholder="New passphrase (8+ characters)" autocomplete="new-password" required minlength="8">
+          <button class="btn" type="submit">Change passphrase</button>
+        </form>
+      </section>
+
+      <section class="setting">
+        <h3>Backup</h3>
+        <p class="muted small">Backups are encrypted with your passphrase, so they’re safe to keep in the cloud or on a USB stick.</p>
+        <div class="row">
+          <button class="btn" id="exportBtn">Download backup</button>
+          <label class="btn" for="importFile">Restore from backup</label>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
+        </div>
+      </section>
+
+      <section class="setting danger-zone">
+        <h3>Danger zone</h3>
+        <button class="btn danger" id="wipeBtn">Erase everything on this device</button>
+      </section>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="search.js"></script>
+  <script src="vault.js"></script>
+  <script src="cameras.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
