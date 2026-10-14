@@ -267,6 +267,24 @@
     </div>
   </dialog>
 
+  <!-- CONFIRM / ASK -->
+  <dialog id="askDialog" class="modal small-modal">
+    <form method="dialog" id="askForm" class="stack">
+      <div class="editor-head"><h2 id="askTitle">Are you sure?</h2><button type="button" class="icon-btn" data-close aria-label="Close">✕</button></div>
+      <p id="askMessage" class="ask-message"></p>
+      <input id="askInput" autocomplete="off">
+      <div class="editor-actions"><span class="spacer"></span><button type="button" class="btn" data-close>Cancel</button><button class="btn primary" id="askOk" type="submit">OK</button></div>
+    </form>
+  </dialog>
+
+  <!-- PHOTO VIEWER -->
+  <dialog id="photoDialog" class="modal photo-modal">
+    <div class="photo-frame">
+      <button type="button" class="icon-btn" data-close aria-label="Close photo">✕</button>
+      <img id="photoBig" alt="Note photo">
+    </div>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="search.js"></script>

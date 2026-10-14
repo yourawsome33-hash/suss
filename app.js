@@ -167,6 +167,36 @@
     });
   });
 
+  // Themed replacement for confirm()/prompt(). Resolves the typed text (or true), or null on cancel.
+  var askResolve = null;
+  function ask(opts) {
+    var d = $('#askDialog');
+    if (askResolve) askResolve(null);
+    $('#askTitle').textContent = opts.title || 'Are you sure?';
+    $('#askMessage').textContent = opts.message || '';
+    var input = $('#askInput');
+    input.classList.toggle('hidden', !opts.input);
+    input.type = opts.input === 'password' ? 'password' : 'text';
+    input.placeholder = opts.placeholder || '';
+    input.value = '';
+    var ok = $('#askOk');
+    ok.textContent = opts.confirmLabel || 'OK';
+    ok.className = 'btn ' + (opts.danger ? 'danger' : 'primary');
+    openModal(d);
+    setTimeout(function () { (opts.input ? input : ok).focus(); }, 40);
+    return new Promise(function (resolve) { askResolve = resolve; });
+  }
+  function settleAsk(value) {
+    if (askResolve) { var r = askResolve; askResolve = null; r(value); }
+  }
+  $('#askForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var input = $('#askInput');
+    settleAsk(input.classList.contains('hidden') ? true : input.value);
+    closeModal($('#askDialog'));
+  });
+  $('#askDialog').addEventListener('close', function () { settleAsk(null); });
+
   // ==========================================================================
   // LOCK SCREEN
   // ==========================================================================
@@ -660,9 +690,13 @@
     if (ui.view === 'stuck' && $('#stuckInput').value.trim()) runStuck();
   });
   $('#deleteNoteBtn').addEventListener('click', function () {
-    if (!editingId || !confirm('Delete this note? This can’t be undone.')) return;
-    data.notes = data.notes.filter(function (n) { return n.id !== editingId; });
-    persist(); closeModal(editor); render(); toast('Note deleted');
+    if (!editingId) return;
+    var id = editingId;
+    ask({ title: 'Delete this note?', message: 'This can’t be undone.', confirmLabel: 'Delete note', danger: true }).then(function (yes) {
+      if (!yes || !data) return;
+      data.notes = data.notes.filter(function (n) { return n.id !== id; });
+      persist(); closeModal(editor); render(); toast('Note deleted');
+    });
   });
   $('#photoFile').addEventListener('change', function (e) {
     var files = Array.from(e.target.files || []);
@@ -677,7 +711,7 @@
     var rm = e.target.closest('[data-remove-photo]');
     if (rm) { editPhotos.splice(+rm.dataset.removePhoto, 1); renderPhotos(); return; }
     var v = e.target.closest('[data-view-photo]');
-    if (v) { var w = window.open(); if (w) { w.document.title = 'Photo'; var img = w.document.createElement('img'); img.src = v.src; img.style.maxWidth = '100%'; w.document.body.appendChild(img); } }
+    if (v) { $('#photoBig').src = v.src; openModal($('#photoDialog')); }
   });
 
   // ==========================================================================
@@ -728,14 +762,23 @@
             function () { toast('Current passphrase is wrong'); });
   });
   $('#exportBtn').addEventListener('click', function () {
+    var filename = 'invention-notebook-backup-' + new Date().toISOString().slice(0, 10) + '.json';
     Vault.exportBackup(data).then(function (backup) {
-      var blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'invention-notebook-backup-' + new Date().toISOString().slice(0, 10) + '.json';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
-      toast('Encrypted backup downloaded');
+      var text = JSON.stringify(backup);
+      // Inside a claude.ai page, downloads go through the viewer's save prompt.
+      var viaHost = window.claude && window.claude.use ? window.claude.use('downloads') : Promise.resolve(null);
+      return viaHost.then(function (downloads) {
+        if (downloads) {
+          return downloads.save({ filename: filename, data: text }).then(function () { toast('Encrypted backup saved'); },
+            function (err) { if (!err || err.code !== 'declined') toast('Couldn’t save the backup here'); });
+        }
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+        a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+        toast('Encrypted backup downloaded');
+      });
     });
   });
   $('#importFile').addEventListener('change', function (e) {
@@ -744,9 +787,8 @@
     file.text().then(function (txt) {
       var obj = JSON.parse(txt);
       if (obj.format !== 'encrypted-backup') throw new Error('format');
-      var pass = prompt('Passphrase for this backup:');
-      if (pass == null) return null;
-      return Vault.readBackup(obj, pass);
+      return ask({ title: 'Unlock backup', message: 'Enter the passphrase this backup was made with.', input: 'password', confirmLabel: 'Restore' })
+        .then(function (pass) { return pass == null || !data ? null : Vault.readBackup(obj, pass); });
     }).then(function (incoming) {
       if (!incoming) return;
       var ids = new Set(data.notes.map(function (n) { return n.id; }));
@@ -764,10 +806,12 @@
     }).finally(function () { e.target.value = ''; });
   });
   $('#wipeBtn').addEventListener('click', function () {
-    var answer = prompt('This permanently deletes every note on this device.\nType ERASE to confirm.');
-    if (answer !== 'ERASE') return;
-    Cameras.stopAll();
-    Vault.wipe().then(function () { data = null; location.reload(); });
+    ask({ title: 'Erase everything?', message: 'This permanently deletes every note on this device.\nType ERASE to confirm.',
+      input: 'text', placeholder: 'ERASE', confirmLabel: 'Erase everything', danger: true }).then(function (answer) {
+      if (answer !== 'ERASE') { if (answer != null) toast('Nothing erased — type ERASE exactly'); return; }
+      Cameras.stopAll();
+      Vault.wipe().then(function () { data = null; location.reload(); });
+    });
   });
 
   // ==========================================================================
@@ -860,6 +904,7 @@
     });
   }
 
+  if (!document.body.classList.contains('is-unlocked')) document.body.classList.add('is-locked');
   $('#app').inert = true;
   startLockScreen();
 })();

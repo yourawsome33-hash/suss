@@ -116,7 +116,9 @@
         if (opened) hooks.toast(opened + ' camera' + (opened > 1 ? 's' : '') + ' online');
       });
     }).catch(function (err) {
-      hooks.toast(err && err.name === 'NotAllowedError' ? 'Camera permission was denied' : 'Could not start cameras');
+      hooks.toast(err && err.name === 'NotAllowedError'
+        ? 'Camera access was blocked. Allow it in your browser, or use the GitHub Pages version of the site.'
+        : 'Could not start cameras');
     });
   }
 
